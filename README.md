@@ -10,6 +10,7 @@ Screen Guardian is a web application that demonstrates real-time content monitor
 - **Activity Dashboard:** A comprehensive dashboard that visualizes blocked content categories with a bar chart and lists recent blocking events in a detailed log.
 - **Permission-Based Simulation:** Simulates the process of granting necessary system permissions (like Accessibility and Overlay) required for such an app to function on a real device.
 - **Local History:** All blocking activity is saved in the browser's local storage for persistence across sessions.
+- **Simulated Pro Features:** Includes a demonstration of "Pro" features like a custom blocklist to show how a Freemium monetization model could be implemented.
 
 ## 🛠️ Tech Stack
 
@@ -43,11 +44,7 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```
 
 3.  **Set up environment variables:**
-    Create a `.env` file in the root of the project by copying the example file:
-    ```bash
-    cp .env.example .env
-    ```
-    Now, open the `.env` file and add your Google AI API key. You can get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+    Create a `.env` file in the root of the project. You can get a free Google AI API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
     ```dotenv
     # .env
     GOOGLE_API_KEY="YOUR_API_KEY_HERE"
@@ -87,16 +84,31 @@ Here's a high-level overview of the key directories in the project:
 └── public/                  # Static assets like images and JSON files
 ```
 
-## 🤔 How It Works
+## 🤔 How It Works: A Web-Based Simulation
 
-1.  **Permissions:** The user first "enables" simulated permissions for accessibility and overlay drawing. This state is saved in local storage.
-2.  **Text Input:** On the main page, the user types into a textarea.
-3.  **Debounced Check:** As the user types, the input is debounced. A local check is performed against a simple blocklist (`public/blocked-words.json`) to see if a more expensive AI analysis is warranted.
+This project is a **web-based simulation** of a native desktop or mobile application. It demonstrates the core logic and user interface of Screen Guardian in a browser environment.
+
+1.  **Simulated Permissions:** The user first "enables" simulated permissions for accessibility and overlay drawing. In a real app, these would be actual system-level requests.
+2.  **Manual Text Input:** On the main page, the user manually types or pastes text into a textarea to trigger the analysis.
+3.  **Debounced Check:** As the user types, the input is debounced. A local check is performed against a blocklist to see if a more expensive AI analysis is warranted.
 4.  **AI Analysis:** If a potential match is found, the text is sent to a Next.js Server Action (`checkContent`).
-5.  **Genkit Flow:** The server action invokes the `contentAnalysisFlow` Genkit flow. This flow sends the text to the Gemini API with a structured prompt, asking for a classification and reason.
-6.  **Response & UI Update:** The AI's analysis is returned to the client. If the content is flagged (`isObjectionable: true`), the `BlockingOverlay` component is displayed with the category and reason.
-7.  **History Logging:** Every time content is blocked, the event details (category, reason, timestamp) are saved to the browser's local storage.
+5.  **Genkit Flow:** The server action invokes the `contentAnalysisFlow`. This flow sends the text to the Gemini API, asking for a classification and reason.
+6.  **Response & UI Update:** The AI's analysis is returned to the client. If the content is flagged (`isObjectionable: true`), the `BlockingOverlay` component is displayed over the textarea.
+7.  **History Logging:** Every time content is blocked, the event details are saved to the browser's local storage.
 8.  **Dashboard:** The `/dashboard` page reads the history from local storage to render the activity charts and logs.
+
+---
+
+### 💡 Real-World Application Concept
+
+In a real-world scenario, Screen Guardian would not be a website. It would be a **native application** installed on your operating system (e.g., Windows, macOS, Android). Here’s how it would function:
+
+-   **Background Service:** After being granted actual **Accessibility and Overlay permissions** by the OS, the app would run as a quiet background service.
+-   **System-Wide Monitoring:** It would automatically and passively monitor the text that appears on your screen in *any application*—whether it's a web browser, a chat client, or a document editor.
+-   **Instantaneous Blocking:** When harmful content is detected, the app would instantly draw the **Blocking Overlay** directly on top of the content, preventing you from seeing it, without you needing to do anything.
+-   **Control Panel:** The interface you see in this web simulation would serve as the app's **control panel** or **settings dashboard**, where you could manage your subscription, customize the blocklist, and view the activity log.
+
+---
 
 ## API and Function Reference
 
