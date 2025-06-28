@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2, Sparkles, ListPlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { BlockingOverlay } from '@/components/blocking-overlay';
 import { checkContent } from './actions';
 import type { ContentAnalysis } from '@/ai/flows/content-check';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const PERMISSIONS_CONFIG = {
   accessibility: {
@@ -39,12 +43,30 @@ export default function ScreenGuardianPage() {
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
+  // Pro features state
+  const [isPro, setIsPro] = useState(false);
+  const [customBlockedWords, setCustomBlockedWords] = useState<string[]>([]);
+  const [newCustomWord, setNewCustomWord] = useState('');
+
   useEffect(() => {
     // Load permissions
     setPermissions({
       accessibility: localStorage.getItem(PERMISSIONS_CONFIG.accessibility.key) === 'true',
       overlay: localStorage.getItem(PERMISSIONS_CONFIG.overlay.key) === 'true',
     });
+
+    // Load Pro status
+    setIsPro(localStorage.getItem('screenGuardianPro') === 'true');
+
+    // Load custom blocklist
+    const storedCustomWords = localStorage.getItem('customBlockedWords');
+    if (storedCustomWords) {
+      try {
+        setCustomBlockedWords(JSON.parse(storedCustomWords));
+      } catch (e) {
+        console.error("Failed to parse custom blocked words", e);
+      }
+    }
 
     const loadBlocklist = async () => {
       const cachedWordsJSON = localStorage.getItem('blockedWords');
@@ -79,7 +101,6 @@ export default function ScreenGuardianPage() {
     loadBlocklist();
   }, [toast]);
 
-
   const handlePermissionToggle = (permission: 'accessibility' | 'overlay') => {
     const newStatus = !permissions[permission];
     localStorage.setItem(PERMISSIONS_CONFIG[permission].key, String(newStatus));
@@ -98,6 +119,11 @@ export default function ScreenGuardianPage() {
         clearTimeout(debounceTimeout.current);
     }
   };
+
+  const combinedBlockedWords = useMemo(() => {
+    return new Set([...Array.from(blockedWords), ...customBlockedWords]);
+  }, [blockedWords, customBlockedWords]);
+
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
@@ -118,7 +144,7 @@ export default function ScreenGuardianPage() {
       }
 
       const textToCheck = newText.toLowerCase();
-      const hasPotentialMatch = Array.from(blockedWords).some(word => 
+      const hasPotentialMatch = Array.from(combinedBlockedWords).some(word => 
         textToCheck.includes(word.toLowerCase())
       );
       
@@ -141,6 +167,32 @@ export default function ScreenGuardianPage() {
       setIsChecking(false);
     }, 500);
   };
+
+  const handleProToggle = () => {
+    const newProStatus = !isPro;
+    setIsPro(newProStatus);
+    localStorage.setItem('screenGuardianPro', String(newProStatus));
+    toast({
+      title: `Pro Features ${newProStatus ? 'Activated' : 'Deactivated'}`,
+      description: `You now have ${newProStatus ? 'access to' : 'lost access to'} all Pro features.`,
+    });
+  };
+
+  const handleAddCustomWord = () => {
+      if (newCustomWord.trim() && !customBlockedWords.includes(newCustomWord.trim().toLowerCase())) {
+          const updatedWords = [...customBlockedWords, newCustomWord.trim().toLowerCase()];
+          setCustomBlockedWords(updatedWords);
+          localStorage.setItem('customBlockedWords', JSON.stringify(updatedWords));
+          setNewCustomWord('');
+      }
+  };
+
+  const handleRemoveCustomWord = (wordToRemove: string) => {
+      const updatedWords = customBlockedWords.filter(word => word !== wordToRemove);
+      setCustomBlockedWords(updatedWords);
+      localStorage.setItem('customBlockedWords', JSON.stringify(updatedWords));
+  };
+
 
   const allPermissionsGranted = useMemo(() => Object.values(permissions).every(p => p), [permissions]);
   const isBlocking = useMemo(() => analysisResult?.isObjectionable === true, [analysisResult]);
@@ -178,35 +230,122 @@ export default function ScreenGuardianPage() {
   );
 
   const renderMonitoringInterface = () => (
-    <div className="w-full max-w-2xl space-y-8">
-      <Card className="relative">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            Monitoring Active
-          </CardTitle>
-          <CardDescription>
-            Paste or type text below. Screen Guardian will analyze it in real-time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Textarea
-              placeholder="Your safe space to check text..."
-              className="min-h-[200px] text-base"
-              value={text}
-              onChange={handleTextChange}
-              disabled={isBlocking}
-            />
-             {isChecking && <Loader2 className="absolute top-3 right-3 h-5 w-5 animate-spin text-muted-foreground" />}
+    <Card className="relative">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldCheck className="h-6 w-6 text-primary" />
+          Monitoring Active
+        </CardTitle>
+        <CardDescription>
+          Paste or type text below. Screen Guardian will analyze it in real-time.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="relative">
+          <Textarea
+            placeholder="Your safe space to check text..."
+            className="min-h-[200px] text-base"
+            value={text}
+            onChange={handleTextChange}
+            disabled={isBlocking}
+          />
+           {isChecking && <Loader2 className="absolute top-3 right-3 h-5 w-5 animate-spin text-muted-foreground" />}
+        </div>
+      </CardContent>
+      <CardFooter>
+          <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
+      </CardFooter>
+      <BlockingOverlay result={analysisResult} onClear={handleClear} />
+    </Card>
+  );
+
+  const renderCustomBlocklist = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ListPlus className="h-6 w-6" />
+          Custom Blocklist
+          {!isPro && <Badge variant="secondary">Pro</Badge>}
+        </CardTitle>
+        <CardDescription>
+          Add your own words or phrases to block. This is a Pro feature.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className={cn(!isPro && "relative")}>
+        {!isPro && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+                <div className="text-center">
+                    <p className="font-semibold">This is a Pro feature.</p>
+                    <p className="text-sm text-muted-foreground">Enable the Pro subscription to use it.</p>
+                </div>
+            </div>
+        )}
+        <div className={cn("space-y-4", !isPro && "blur-sm")}>
+            <div className="flex gap-2">
+                <Input
+                    value={newCustomWord}
+                    onChange={(e) => setNewCustomWord(e.target.value)}
+                    placeholder="Add a word..."
+                    disabled={!isPro}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddCustomWord();
+                    }}
+                />
+                <Button onClick={handleAddCustomWord} disabled={!isPro}>Add Word</Button>
+            </div>
+            {customBlockedWords.length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Your custom words:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {customBlockedWords.map(word => (
+                            <Badge key={word} variant="secondary" className="pl-3 pr-1 text-sm">
+                                {word}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="ml-1 h-5 w-5 rounded-full"
+                                    onClick={() => handleRemoveCustomWord(word)}
+                                    disabled={!isPro}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            </Badge>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderSubscriptionManager = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-6 w-6 text-accent" />
+          Manage Subscription
+        </CardTitle>
+        <CardDescription>
+          Unlock Pro features like the custom blocklist for enhanced protection.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div>
+            <h3 className="font-semibold">Screen Guardian Pro</h3>
+            <p className="text-sm text-muted-foreground">
+              {isPro ? "Your subscription is active." : "Unlock custom blocklists and more."}
+            </p>
           </div>
-        </CardContent>
-        <CardFooter>
-            <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
-        </CardFooter>
-        <BlockingOverlay result={analysisResult} onClear={handleClear} />
-      </Card>
-    </div>
+          <Switch
+            checked={isPro}
+            onCheckedChange={handleProToggle}
+            aria-label="Toggle Pro Subscription"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 
   return (
@@ -217,7 +356,13 @@ export default function ScreenGuardianPage() {
                 <p className="text-lg text-muted-foreground mt-2">Your shield in the digital world.</p>
             </div>
 
-            {allPermissionsGranted ? renderMonitoringInterface() : renderPermissionsSetup()}
+            {allPermissionsGranted ? (
+              <div className="space-y-8">
+                {renderMonitoringInterface()}
+                {renderCustomBlocklist()}
+                {renderSubscriptionManager()}
+              </div>
+            ) : renderPermissionsSetup()}
             
             <div className="space-y-8 mt-8">
               <div className="flex items-center justify-center gap-4">
@@ -241,3 +386,5 @@ export default function ScreenGuardianPage() {
     </main>
   );
 }
+
+    
