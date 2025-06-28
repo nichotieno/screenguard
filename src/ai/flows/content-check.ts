@@ -3,6 +3,11 @@
 import {ai} from '../genkit';
 import {z} from 'zod';
 
+// Define a structured input schema for better type safety and clarity.
+const ContentAnalysisInputSchema = z.object({
+  text: z.string(),
+});
+
 const ContentAnalysisSchema = z.object({
   isObjectionable: z
     .boolean()
@@ -20,25 +25,32 @@ export type ContentAnalysis = z.infer<typeof ContentAnalysisSchema>;
 
 const contentAnalysisPrompt = ai.definePrompt({
   name: 'contentAnalysisPrompt',
-  input: {schema: z.string()},
+  // Use the structured input schema.
+  input: {schema: ContentAnalysisInputSchema},
   output: {schema: ContentAnalysisSchema},
-  prompt: `Analyze the following text for objectionable content. Categorize it and provide a brief, user-friendly reason for your analysis. The text is: "[[text]]"`,
+  // Add a system instruction to define the AI's role.
+  system: `You are a content moderation expert. Your task is to analyze text for any objectionable material.`,
+  // Update the prompt to use Handlebars syntax.
+  prompt: `Analyze the following text for objectionable content. Categorize it and provide a brief, user-friendly reason for your analysis. The text is: "{{{text}}}"`,
 });
 
 const contentAnalysisFlow = ai.defineFlow(
   {
     name: 'contentAnalysisFlow',
-    inputSchema: z.string(),
+    // The flow now expects the structured input object.
+    inputSchema: ContentAnalysisInputSchema,
     outputSchema: ContentAnalysisSchema,
     description:
       'Checks if a given text contains objectionable content and provides analysis.',
   },
-  async (text) => {
-    const {output} = await contentAnalysisPrompt(text);
+  async (input) => {
+    const {output} = await contentAnalysisPrompt(input);
     return output!;
   }
 );
 
+// The exported function still accepts a simple string for convenience.
 export async function analyzeContent(text: string): Promise<ContentAnalysis> {
-  return contentAnalysisFlow(text);
+  // It wraps the text in the required object structure before calling the flow.
+  return contentAnalysisFlow({ text });
 }
