@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -121,6 +123,16 @@ export default function ScreenGuardianPage() {
       if (hasPotentialMatch) {
         const result = await checkContent(newText);
         setAnalysisResult(result);
+        if (result?.isObjectionable) {
+            try {
+                const storedHistoryJSON = localStorage.getItem('blockingHistory');
+                const history = storedHistoryJSON ? JSON.parse(storedHistoryJSON) : [];
+                const newEntry = { ...result, timestamp: new Date().toISOString() };
+                localStorage.setItem('blockingHistory', JSON.stringify([...history, newEntry]));
+            } catch (e) {
+                console.error("Failed to update blocking history", e);
+            }
+        }
       } else {
         setAnalysisResult(null);
       }
@@ -202,13 +214,22 @@ export default function ScreenGuardianPage() {
 
       {allPermissionsGranted ? renderMonitoringInterface() : renderPermissionsSetup()}
       
-       <Button variant="link" size="sm" className="mt-8 text-muted-foreground" onClick={() => {
-            setPermissions({accessibility: false, overlay: false});
-            localStorage.removeItem(PERMISSIONS_CONFIG.accessibility.key);
-            localStorage.removeItem(PERMISSIONS_CONFIG.overlay.key);
-       }}>
-        Reset Permissions
-       </Button>
+       <div className="flex items-center gap-4 mt-8">
+          {allPermissionsGranted && (
+             <Button asChild variant="secondary">
+                <Link href="/dashboard">
+                  View Activity Dashboard
+                </Link>
+              </Button>
+          )}
+          <Button variant="link" size="sm" className="text-muted-foreground" onClick={() => {
+              setPermissions({accessibility: false, overlay: false});
+              localStorage.removeItem(PERMISSIONS_CONFIG.accessibility.key);
+              localStorage.removeItem(PERMISSIONS_CONFIG.overlay.key);
+          }}>
+            Reset Permissions
+          </Button>
+       </div>
     </main>
   );
 }
