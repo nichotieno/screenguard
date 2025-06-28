@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { BlockingOverlay } from '@/components/blocking-overlay';
 import { checkContent } from './actions';
 import type { ContentAnalysis } from '@/ai/flows/content-check';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const PERMISSIONS_CONFIG = {
   accessibility: {
@@ -176,33 +179,73 @@ export default function ScreenGuardianPage() {
   );
 
   const renderMonitoringInterface = () => (
-    <Card className="w-full max-w-2xl relative">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-primary" />
-          Monitoring Active
-        </CardTitle>
-        <CardDescription>
-          Paste or type text below. Screen Guardian will analyze it in real-time.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="relative">
-          <Textarea
-            placeholder="Your safe space to check text..."
-            className="min-h-[200px] text-base"
-            value={text}
-            onChange={handleTextChange}
-            disabled={isBlocking}
-          />
-           {isChecking && <Loader2 className="absolute top-3 right-3 h-5 w-5 animate-spin text-muted-foreground" />}
-        </div>
-      </CardContent>
-      <CardFooter>
-          <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
-      </CardFooter>
-      <BlockingOverlay result={analysisResult} onClear={handleClear} />
-    </Card>
+    <div className="w-full max-w-2xl space-y-8">
+      <Card className="relative">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+            Monitoring Active
+          </CardTitle>
+          <CardDescription>
+            Paste or type text below. Screen Guardian will analyze it in real-time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Textarea
+              placeholder="Your safe space to check text..."
+              className="min-h-[200px] text-base"
+              value={text}
+              onChange={handleTextChange}
+              disabled={isBlocking}
+            />
+             {isChecking && <Loader2 className="absolute top-3 right-3 h-5 w-5 animate-spin text-muted-foreground" />}
+          </div>
+        </CardContent>
+        <CardFooter>
+            <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
+        </CardFooter>
+        <BlockingOverlay result={analysisResult} onClear={handleClear} />
+      </Card>
+      
+      <TooltipProvider>
+        <Card className="opacity-60">
+            <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Custom Blocklist
+                </div>
+                <Badge variant="outline" className="text-accent-foreground bg-accent">PRO</Badge>
+                </CardTitle>
+                <CardDescription>
+                Add your own words to the blocklist for personalized protection. This is a premium feature.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center gap-2">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Input placeholder="Enter a word to block..." disabled />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Upgrade to Pro to enable custom blocklists.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button disabled>Add Word</Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Upgrade to Pro to enable custom blocklists.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
+            </CardContent>
+        </Card>
+      </TooltipProvider>
+
+    </div>
   );
 
   return (
