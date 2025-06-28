@@ -3,34 +3,42 @@
 import {ai} from '../genkit';
 import {z} from 'zod';
 
-const isObjectionableFlow = ai.defineFlow(
+const ContentAnalysisSchema = z.object({
+  isObjectionable: z
+    .boolean()
+    .describe('Whether or not the input is objectionable.'),
+  reason: z
+    .string()
+    .describe(
+      "A brief, user-friendly explanation for why the content was flagged. If not objectionable, this should be 'Content appears to be safe.'."
+    ),
+  category: z
+    .enum(['Hate Speech', 'Violence', 'Self-Harm', 'Spam', 'Other', 'Safe'])
+    .describe('The category of the content.'),
+});
+export type ContentAnalysis = z.infer<typeof ContentAnalysisSchema>;
+
+const contentAnalysisPrompt = ai.definePrompt({
+  name: 'contentAnalysisPrompt',
+  input: {schema: z.string()},
+  output: {schema: ContentAnalysisSchema},
+  prompt: `Analyze the following text for objectionable content. Categorize it and provide a brief, user-friendly reason for your analysis. The text is: "[[text]]"`,
+});
+
+const contentAnalysisFlow = ai.defineFlow(
   {
-    name: 'isObjectionableFlow',
+    name: 'contentAnalysisFlow',
     inputSchema: z.string(),
-    outputSchema: z.boolean(),
-    description: 'Checks if a given text contains objectionable content.',
+    outputSchema: ContentAnalysisSchema,
+    description:
+      'Checks if a given text contains objectionable content and provides analysis.',
   },
   async (text) => {
-    const llmResponse = await ai.generate({
-      prompt: `Analyze the following text. Does it contain objectionable, harmful, or inappropriate content? The text is: "${text}". Respond with only 'true' or 'false'.`,
-      temperature: 0.1,
-    });
-    
-    const responseText = llmResponse.text.trim().toLowerCase();
-    
-    if (responseText === 'true') {
-      return true;
-    }
-    if (responseText === 'false') {
-      return false;
-    }
-
-    // Fallback if the model doesn't follow instructions perfectly
-    console.warn(`LLM returned unexpected response: "${responseText}". Defaulting to false.`);
-    return false;
+    const {output} = await contentAnalysisPrompt(text);
+    return output!;
   }
 );
 
-export async function isObjectionable(text: string): Promise<boolean> {
-    return isObjectionableFlow(text);
+export async function analyzeContent(text: string): Promise<ContentAnalysis> {
+  return contentAnalysisFlow(text);
 }

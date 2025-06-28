@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { BlockingOverlay } from '@/components/blocking-overlay';
 import { checkContent } from './actions';
+import type { ContentAnalysis } from '@/ai/flows/content-check';
 
 const PERMISSIONS_CONFIG = {
   accessibility: {
@@ -30,7 +31,7 @@ export default function ScreenGuardianPage() {
     overlay: false,
   });
   const [text, setText] = useState('');
-  const [isBlocking, setIsBlocking] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<ContentAnalysis | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [blockedWords, setBlockedWords] = useState<Set<string>>(new Set());
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -87,7 +88,7 @@ export default function ScreenGuardianPage() {
 
   const handleClear = () => {
     setText('');
-    setIsBlocking(false);
+    setAnalysisResult(null);
     setIsChecking(false);
     if (debounceTimeout.current) {
         clearTimeout(debounceTimeout.current);
@@ -97,6 +98,7 @@ export default function ScreenGuardianPage() {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
     setText(newText);
+    setAnalysisResult(null);
 
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
@@ -106,7 +108,7 @@ export default function ScreenGuardianPage() {
 
     debounceTimeout.current = setTimeout(async () => {
       if (newText.trim() === '') {
-        setIsBlocking(false);
+        setAnalysisResult(null);
         setIsChecking(false);
         return;
       }
@@ -117,16 +119,17 @@ export default function ScreenGuardianPage() {
       );
       
       if (hasPotentialMatch) {
-        const isHarmful = await checkContent(newText);
-        setIsBlocking(isHarmful);
+        const result = await checkContent(newText);
+        setAnalysisResult(result);
       } else {
-        setIsBlocking(false);
+        setAnalysisResult(null);
       }
       setIsChecking(false);
     }, 500);
   };
 
   const allPermissionsGranted = useMemo(() => Object.values(permissions).every(p => p), [permissions]);
+  const isBlocking = useMemo(() => analysisResult?.isObjectionable === true, [analysisResult]);
 
   const renderPermissionsSetup = () => (
     <Card className="w-full max-w-2xl">
@@ -186,7 +189,7 @@ export default function ScreenGuardianPage() {
       <CardFooter>
           <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
       </CardFooter>
-      <BlockingOverlay isVisible={isBlocking} onClear={handleClear} />
+      <BlockingOverlay result={analysisResult} onClear={handleClear} />
     </Card>
   );
 

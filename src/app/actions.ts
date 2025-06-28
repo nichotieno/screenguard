@@ -1,16 +1,26 @@
 'use server';
 
-import {isObjectionable} from '@/ai/flows/content-check';
+import {analyzeContent, ContentAnalysis} from '@/ai/flows/content-check';
 
-export async function checkContent(text: string): Promise<boolean> {
-  if (!text.trim()) return false;
+export async function checkContent(text: string): Promise<ContentAnalysis> {
+  if (!text.trim()) {
+    return {
+      isObjectionable: false,
+      reason: 'Content is empty.',
+      category: 'Safe',
+    };
+  }
 
   try {
-    const result = await isObjectionable(text);
+    const result = await analyzeContent(text);
     return result;
   } catch (error) {
     console.error('Error checking content with AI:', error);
     // In case of an error with the AI service, fail safe (don't block).
-    return false;
+    return {
+      isObjectionable: false,
+      reason: 'AI analysis service is currently unavailable.',
+      category: 'Safe',
+    };
   }
 }
