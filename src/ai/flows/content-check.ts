@@ -3,9 +3,9 @@
 import {ai} from '../genkit';
 import {z} from 'zod';
 
-export const isObjectionable = ai.defineFlow(
+const isObjectionableFlow = ai.defineFlow(
   {
-    name: 'isObjectionable',
+    name: 'isObjectionableFlow',
     inputSchema: z.string(),
     outputSchema: z.boolean(),
     description: 'Checks if a given text contains objectionable content.',
@@ -30,3 +30,7 @@ export const isObjectionable = ai.defineFlow(
     return false;
   }
 );
+
+export async function isObjectionable(text: string): Promise<boolean> {
+    return isObjectionableFlow(text);
+}

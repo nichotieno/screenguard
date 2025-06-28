@@ -85,6 +85,15 @@ export default function ScreenGuardianPage() {
     });
   };
 
+  const handleClear = () => {
+    setText('');
+    setIsBlocking(false);
+    setIsChecking(false);
+    if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+    }
+  };
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
     setText(newText);
@@ -177,7 +186,7 @@ export default function ScreenGuardianPage() {
       <CardFooter>
           <p className="text-xs text-muted-foreground">This is a web simulation. In the native app, this monitoring happens automatically across your device.</p>
       </CardFooter>
-      <BlockingOverlay isVisible={isBlocking} />
+      <BlockingOverlay isVisible={isBlocking} onClear={handleClear} />
     </Card>
   );
 

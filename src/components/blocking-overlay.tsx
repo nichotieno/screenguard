@@ -1,13 +1,15 @@
 "use client";
 
 import { AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface BlockingOverlayProps {
   isVisible: boolean;
+  onClear: () => void;
 }
 
-export function BlockingOverlay({ isVisible }: BlockingOverlayProps) {
+export function BlockingOverlay({ isVisible, onClear }: BlockingOverlayProps) {
   if (!isVisible) {
     return null;
   }
@@ -31,9 +33,12 @@ export function BlockingOverlay({ isVisible }: BlockingOverlayProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            The content is blocked until the triggering text is removed.
+            The content is blocked. Clear the text to continue.
           </p>
         </CardContent>
+        <CardFooter className="flex justify-center">
+            <Button onClick={onClear} variant="outline">Clear and Continue</Button>
+        </CardFooter>
       </Card>
     </div>
   );
