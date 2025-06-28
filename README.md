@@ -97,3 +97,83 @@ Here's a high-level overview of the key directories in the project:
 6.  **Response & UI Update:** The AI's analysis is returned to the client. If the content is flagged (`isObjectionable: true`), the `BlockingOverlay` component is displayed with the category and reason.
 7.  **History Logging:** Every time content is blocked, the event details (category, reason, timestamp) are saved to the browser's local storage.
 8.  **Dashboard:** The `/dashboard` page reads the history from local storage to render the activity charts and logs.
+
+## API and Function Reference
+
+This section provides a detailed breakdown of the key functions, components, and APIs used throughout the Screen Guardian application.
+
+### Frontend Components & Hooks
+
+#### `src/app/page.tsx` - Main Application Page
+
+This is the primary user-facing component for content analysis.
+
+| Function / Hook        | Description                                                                                                                                                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ScreenGuardianPage()` | The main functional component. Manages state for permissions, user input text, and AI analysis results.                                                                 |
+| `handlePermissionToggle(permission)` | Toggles the state of a given permission (`accessibility` or `overlay`), updates `localStorage`, and shows a confirmation toast.                                 |
+| `handleClear()`        | Resets the application state by clearing the text area content and the previous analysis result.                                                                          |
+| `handleTextChange(e)`  | Triggered on text area input. It debounces the input, performs a quick local check against a blocklist, and if a potential match is found, calls the `checkContent` server action. |
+| `useEffect()`          | On initial component mount, it loads permission states from `localStorage` and fetches the `blocked-words.json` blocklist.                                             |
+| `useMemo()`            | Used to derive `allPermissionsGranted` and `isBlocking` states from component state, optimizing re-renders.                                                              |
+| `renderPermissionsSetup()` | A function that returns the JSX for the initial permission setup card.                                                                                              |
+| `renderMonitoringInterface()` | A function that returns the JSX for the main content monitoring interface, including the text area and blocking overlay.                                            |
+
+---
+
+#### `src/app/dashboard/page.tsx` - Activity Dashboard
+
+This component displays analytics about blocked content.
+
+| Function / Hook   | Description                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `DashboardPage()` | The main functional component for the dashboard. Fetches and displays data from `localStorage`.                |
+| `clearHistory()`  | Clears the `blockingHistory` item from `localStorage` and resets the component's state.                          |
+| `useEffect()`     | On mount, sets a flag `isClient` to `true` to avoid server-side rendering issues with `localStorage`. It then loads the history. |
+| `useMemo()`       | Used to calculate `chartData` (aggregating counts per category) and `sortedHistory` from the history state. This avoids re-calculating on every render. |
+
+---
+
+#### `src/components/blocking-overlay.tsx` - Blocking Overlay
+
+A reusable component that appears over the UI to block content.
+
+| Prop      | Type                  | Description                                                              |
+| --------- | --------------------- | ------------------------------------------------------------------------ |
+| `result`  | `ContentAnalysis` \| `null` | The analysis result from the AI. The overlay is shown if `result.isObjectionable` is `true`. |
+| `onClear` | `() => void`          | A callback function that is invoked when the "Clear and Continue" button is clicked. |
+
+---
+
+### Backend (Server Actions & AI Flows)
+
+#### `src/app/actions.ts` - Server Actions
+
+These are functions that run exclusively on the server but can be called directly from client components.
+
+| Function           | Parameters       | Returns                 | Description                                                                                                                                             |
+| ------------------ | ---------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkContent()`   | `text: string`   | `Promise<ContentAnalysis>` | The primary server action. It validates the input text and calls the `analyzeContent` Genkit flow to perform AI analysis. Includes error handling for AI service failures. |
+
+---
+
+#### `src/ai/flows/content-check.ts` - Genkit AI Flow
+
+This file defines the core AI logic for content analysis.
+
+| Function / Definition       | Description                                                                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ContentAnalysisSchema`     | A `zod` schema that defines the expected structure of the JSON output from the AI model. It ensures type safety for the AI's response.                                       |
+| `analyzeContent(text)`      | The exported wrapper function that the server action calls. It invokes the `contentAnalysisFlow` with the provided text and returns the result.                             |
+| `contentAnalysisFlow`       | The main Genkit flow, defined with `ai.defineFlow`. It orchestrates the AI call by taking a string input, passing it to the prompt, and returning the structured output.     |
+| `contentAnalysisPrompt`     | A Genkit prompt definition, created with `ai.definePrompt`. It contains the actual instruction string sent to the Gemini model and specifies the input and output schemas. |
+
+---
+
+### Utility Functions
+
+#### `src/lib/utils.ts`
+
+| Function | Description                                                                                               |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| `cn()`   | A helper function that combines `clsx` and `tailwind-merge` for robustly merging and managing CSS classes. |
