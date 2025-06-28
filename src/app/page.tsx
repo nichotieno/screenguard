@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2, Lock, Sparkles, PlusCircle, Trash2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Settings, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,11 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { BlockingOverlay } from '@/components/blocking-overlay';
 import { checkContent } from './actions';
 import type { ContentAnalysis } from '@/ai/flows/content-check';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 
 const PERMISSIONS_CONFIG = {
   accessibility: {
@@ -40,14 +35,9 @@ export default function ScreenGuardianPage() {
   const [text, setText] = useState('');
   const [analysisResult, setAnalysisResult] = useState<ContentAnalysis | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [baseBlockedWords, setBaseBlockedWords] = useState<Set<string>>(new Set());
+  const [blockedWords, setBlockedWords] = useState<Set<string>>(new Set());
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-
-  // Pro feature state
-  const [isPro, setIsPro] = useState(false);
-  const [customWord, setCustomWord] = useState('');
-  const [customBlockedWords, setCustomBlockedWords] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Load permissions
@@ -56,26 +46,12 @@ export default function ScreenGuardianPage() {
       overlay: localStorage.getItem(PERMISSIONS_CONFIG.overlay.key) === 'true',
     });
 
-    // Load Pro status
-    setIsPro(localStorage.getItem('screenGuardianPro') === 'true');
-
-    // Load custom blocklist
-    try {
-        const storedCustomWords = localStorage.getItem('customBlockedWords');
-        if(storedCustomWords) {
-            setCustomBlockedWords(new Set(JSON.parse(storedCustomWords)));
-        }
-    } catch(e) {
-        console.error("Failed to load custom blocklist", e);
-    }
-
-
     const loadBlocklist = async () => {
       const cachedWordsJSON = localStorage.getItem('blockedWords');
       if (cachedWordsJSON) {
         try {
           const cachedWords = JSON.parse(cachedWordsJSON);
-          setBaseBlockedWords(new Set(cachedWords));
+          setBlockedWords(new Set(cachedWords));
         } catch (e) {
           console.error("Failed to parse cached blocklist", e);
         }
@@ -86,7 +62,7 @@ export default function ScreenGuardianPage() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         const remoteWords = data.words || [];
-        setBaseBlockedWords(new Set(remoteWords));
+        setBlockedWords(new Set(remoteWords));
         localStorage.setItem('blockedWords', JSON.stringify(remoteWords));
       } catch (err) {
         console.error("Failed to fetch or update blocklist:", err);
@@ -103,10 +79,6 @@ export default function ScreenGuardianPage() {
     loadBlocklist();
   }, [toast]);
 
-  const allBlockedWords = useMemo(() => {
-    return new Set([...Array.from(baseBlockedWords), ...Array.from(customBlockedWords)]);
-  }, [baseBlockedWords, customBlockedWords]);
-
 
   const handlePermissionToggle = (permission: 'accessibility' | 'overlay') => {
     const newStatus = !permissions[permission];
@@ -117,41 +89,6 @@ export default function ScreenGuardianPage() {
       description: `The permission has been successfully ${newStatus ? 'granted' : 'revoked'}.`,
     });
   };
-
-  const handleProToggle = (isProEnabled: boolean) => {
-    setIsPro(isProEnabled);
-    localStorage.setItem('screenGuardianPro', String(isProEnabled));
-    toast({
-        title: `Pro Plan ${isProEnabled ? 'Activated' : 'Deactivated'}!`,
-        description: `You can now ${isProEnabled ? '' : 'no longer '}use premium features.`,
-    });
-  }
-
-  const handleAddCustomWord = () => {
-    if (customWord.trim() && !allBlockedWords.has(customWord.trim().toLowerCase())) {
-        const newCustomWords = new Set(customBlockedWords);
-        newCustomWords.add(customWord.trim().toLowerCase());
-        setCustomBlockedWords(newCustomWords);
-        localStorage.setItem('customBlockedWords', JSON.stringify(Array.from(newCustomWords)));
-        setCustomWord('');
-        toast({
-            title: "Word Added",
-            description: `"${customWord.trim()}" has been added to your blocklist.`,
-        });
-    }
-  }
-
-  const handleRemoveCustomWord = (wordToRemove: string) => {
-    const newCustomWords = new Set(customBlockedWords);
-    newCustomWords.delete(wordToRemove);
-    setCustomBlockedWords(newCustomWords);
-    localStorage.setItem('customBlockedWords', JSON.stringify(Array.from(newCustomWords)));
-    toast({
-        title: "Word Removed",
-        description: `"${wordToRemove}" has been removed from your blocklist.`,
-        variant: "destructive"
-    });
-  }
 
   const handleClear = () => {
     setText('');
@@ -181,7 +118,7 @@ export default function ScreenGuardianPage() {
       }
 
       const textToCheck = newText.toLowerCase();
-      const hasPotentialMatch = Array.from(allBlockedWords).some(word => 
+      const hasPotentialMatch = Array.from(blockedWords).some(word => 
         textToCheck.includes(word.toLowerCase())
       );
       
@@ -269,55 +206,6 @@ export default function ScreenGuardianPage() {
         </CardFooter>
         <BlockingOverlay result={analysisResult} onClear={handleClear} />
       </Card>
-      
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Lock className="h-5 w-5" />
-                    Custom Blocklist
-                </div>
-                {!isPro && <Badge variant="outline" className="text-accent-foreground bg-accent">PRO</Badge>}
-                </CardTitle>
-                <CardDescription>
-                {isPro ? "Add your own words to the blocklist for personalized protection." : "Upgrade to Pro to add your own words to the blocklist."}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                    <Input 
-                        placeholder="Enter a word to block..." 
-                        disabled={!isPro}
-                        value={customWord}
-                        onChange={(e) => setCustomWord(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddCustomWord()}
-                     />
-                    <Button onClick={handleAddCustomWord} disabled={!isPro || !customWord.trim()}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Word
-                    </Button>
-                </div>
-                {isPro && customBlockedWords.size > 0 && (
-                    <>
-                    <Separator />
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Your Blocked Words:</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {Array.from(customBlockedWords).map(word => (
-                                <Badge key={word} variant="secondary" className="flex items-center gap-2">
-                                    <span>{word}</span>
-                                    <button onClick={() => handleRemoveCustomWord(word)} className="rounded-full hover:bg-muted-foreground/20 p-0.5">
-                                        <Trash2 className="h-3 w-3" />
-                                    </button>
-                                </Badge>
-                            ))}
-                        </div>
-                    </div>
-                    </>
-                )}
-            </CardContent>
-        </Card>
-
     </div>
   );
 
@@ -332,30 +220,6 @@ export default function ScreenGuardianPage() {
             {allPermissionsGranted ? renderMonitoringInterface() : renderPermissionsSetup()}
             
             <div className="space-y-8 mt-8">
-              {allPermissionsGranted && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent"/>Manage Subscription</CardTitle>
-                        <CardDescription>Simulate a Pro subscription to unlock premium features.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-                        <Label htmlFor="pro-switch" className="flex flex-col space-y-1 cursor-pointer">
-                            <span>Pro Plan</span>
-                            <span className="font-normal leading-snug text-muted-foreground">
-                                Unlock custom blocklists and more.
-                            </span>
-                        </Label>
-                        <Switch
-                            id="pro-switch"
-                            checked={isPro}
-                            onCheckedChange={handleProToggle}
-                        />
-                    </div>
-                    </CardContent>
-                </Card>
-              )}
-
               <div className="flex items-center justify-center gap-4">
                   {allPermissionsGranted && (
                     <Button asChild variant="secondary">
@@ -377,5 +241,3 @@ export default function ScreenGuardianPage() {
     </main>
   );
 }
-
-    
