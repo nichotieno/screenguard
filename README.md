@@ -97,16 +97,7 @@ This project is a **web-based simulation** of a native desktop or mobile applica
 7.  **History Logging:** Every time content is blocked, the event details are saved to the browser's local storage.
 8.  **Dashboard:** The `/dashboard` page reads the history from local storage to render the activity charts and logs.
 
----
-
-### 💡 Real-World Application Concept
-
-In a real-world scenario, Screen Guardian would not be a website. It would be a **native application** installed on your operating system (e.g., Windows, macOS, Android). Here’s how it would function:
-
--   **Background Service:** After being granted actual **Accessibility and Overlay permissions** by the OS, the app would run as a quiet background service.
--   **System-Wide Monitoring:** It would automatically and passively monitor the text that appears on your screen in *any application*—whether it's a web browser, a chat client, or a document editor.
--   **Instantaneous Blocking:** When harmful content is detected, the app would instantly draw the **Blocking Overlay** directly on top of the content, preventing you from seeing it, without you needing to do anything.
--   **Control Panel:** The interface you see in this web simulation would serve as the app's **control panel** or **settings dashboard**, where you could manage your subscription, customize the blocklist, and view the activity log.
+For more details on how this would function as a native application, see the [Real-World Application Concept](./REAL_WORLD_CONCEPT.md) document.
 
 ---
 
